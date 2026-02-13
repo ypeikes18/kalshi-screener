@@ -34,7 +34,23 @@ export async function matchMarkets(
     max_tokens: 4096,
     messages: [{
       role: 'user',
-      content: `You are a market matching engine. Given watchlist queries and a list of prediction markets, identify which markets are semantically relevant to each query.
+      content: `You are a highly precise market matching engine. Your job is to find prediction markets that are directly relevant to user queries.
+
+MATCHING CRITERIA:
+- Only match if the market is DIRECTLY about the same topic, person, event, or closely related concept
+- Keywords must align meaningfully (not just coincidental word overlap)
+- Be conservative - false negatives are better than false positives
+- Consider synonyms, related terms, and semantic meaning, not just exact text matches
+
+EXAMPLES OF GOOD MATCHES:
+- Query "Israeli elections" → Markets about Israeli politics, specific Israeli politicians, Israeli government outcomes
+- Query "Fed rate cuts" → Markets about Federal Reserve decisions, interest rates, monetary policy
+- Query "Bitcoin price" → Markets about Bitcoin reaching certain price levels, crypto regulation affecting Bitcoin
+
+EXAMPLES OF BAD MATCHES:
+- Query "Israeli elections" → Markets about US elections (different country)
+- Query "Fed rate cuts" → Markets about European Central Bank (different central bank)
+- Query "Bitcoin price" → Markets about Ethereum or other crypto (different asset)
 
 QUERIES:
 ${queryList}
@@ -42,12 +58,12 @@ ${queryList}
 MARKETS:
 ${marketList}
 
-For each query, list the market indices that are relevant. A market is relevant if it's about the same topic, even if not an exact match. Be inclusive but reasonable.
+For each query, ONLY list market indices that are directly relevant. When in doubt, exclude the market.
 
 Respond ONLY in this JSON format, no other text:
-{"matches": [{"q": 0, "markets": [1, 5, 12]}, {"q": 1, "markets": [3, 7]}]}
+{"matches": [{"q": 0, "markets": [1, 5]}, {"q": 1, "markets": []}]}
 
-If no markets match a query, omit it or use an empty array. Return ONLY valid JSON.`
+Return ONLY valid JSON.`
     }],
   });
 

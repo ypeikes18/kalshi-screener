@@ -6,22 +6,30 @@ import { matchMarkets } from '@/lib/matcher';
 export const maxDuration = 60;
 
 export async function POST() {
-  const repo = getRepository();
+  try {
+    const repo = getRepository();
 
-  // Get active watchlist items
-  const watchlist = await repo.getActiveWatchlistItems();
-  if (watchlist.length === 0) {
-    return NextResponse.json({ message: 'No active watchlist items', matched: 0 });
-  }
+    // Get active watchlist items
+    const watchlist = await repo.getActiveWatchlistItems();
+    if (watchlist.length === 0) {
+      return NextResponse.json({ message: 'No active watchlist items', matched: 0 });
+    }
 
-  // Fetch events from Kalshi (paginated, up to ~1000)
+  // Fetch events from Kalshi (limited to avoid rate limits)
   const allEvents: KalshiEvent[] = [];
   let cursor: string | undefined;
-  for (let i = 0; i < 5; i++) {
-    const data = await fetchEvents(cursor, 200);
-    allEvents.push(...data.events);
-    if (!data.cursor || data.events.length === 0) break;
-    cursor = data.cursor;
+  for (let i = 0; i < 2; i++) { // Reduced from 5 to 2 to avoid rate limits
+    try {
+      const data = await fetchEvents(cursor, 100); // Reduced from 200 to 100
+      allEvents.push(...data.events);
+      if (!data.cursor || data.events.length === 0) break;
+      cursor = data.cursor;
+      // Small delay to avoid rate limits
+      if (i < 1) await new Promise(resolve => setTimeout(resolve, 500));
+    } catch (err) {
+      console.error('Failed to fetch events:', err);
+      break;
+    }
   }
 
   if (allEvents.length === 0) {
@@ -72,8 +80,15 @@ export async function POST() {
     }
   }
 
-  return NextResponse.json({
-    message: `Poll complete. Checked ${allEvents.length} events.`,
-    matched: totalMatched,
-  });
+    return NextResponse.json({
+      message: `Poll complete. Checked ${allEvents.length} events.`,
+      matched: totalMatched,
+    });
+  } catch (error) {
+    console.error('Poll error:', error);
+    return NextResponse.json({
+      message: `Poll failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      matched: 0,
+    }, { status: 500 });
+  }
 }

@@ -5,14 +5,14 @@
  * (e.g. SQLite → Supabase), change the implementation below.
  */
 import type { IScreenerRepository } from './repository';
-import { SqliteRepository } from './sqlite-repository';
+import { SupabaseRepository } from './supabase-repository';
 
 // Singleton — swap this line to change backends
 let _repo: IScreenerRepository | null = null;
 
 export function getRepository(): IScreenerRepository {
   if (!_repo) {
-    _repo = new SqliteRepository();
+    _repo = new SupabaseRepository();
   }
   return _repo;
 }

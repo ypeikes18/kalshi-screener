@@ -30,15 +30,30 @@ export interface KalshiMarket {
 export async function fetchEvents(cursor?: string, limit = 100): Promise<{ events: KalshiEvent[]; cursor: string }> {
   const params = new URLSearchParams({ limit: String(limit), status: 'open' });
   if (cursor) params.set('cursor', cursor);
-  const res = await fetch(`${BASE}/events?${params}`);
+  const res = await fetch(`${BASE}/events?${params}`, { 
+    signal: AbortSignal.timeout(10000) // 10s timeout
+  });
   if (!res.ok) throw new Error(`Kalshi events API error: ${res.status}`);
-  return res.json();
+  const text = await res.text();
+  if (!text) throw new Error('Empty response from Kalshi API');
+  return JSON.parse(text);
 }
 
 export async function fetchMarketsByEvent(eventTicker: string): Promise<KalshiMarket[]> {
-  const res = await fetch(`${BASE}/markets?event_ticker=${eventTicker}&limit=100`);
-  if (!res.ok) throw new Error(`Kalshi markets API error: ${res.status}`);
-  const data = await res.json();
+  const res = await fetch(`${BASE}/markets?event_ticker=${eventTicker}&limit=100`, { 
+    signal: AbortSignal.timeout(8000) // 8s timeout
+  });
+  if (!res.ok) {
+    if (res.status === 429) {
+      // Rate limited - wait a bit and return empty
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      return [];
+    }
+    throw new Error(`Kalshi markets API error: ${res.status}`);
+  }
+  const text = await res.text();
+  if (!text) return [];
+  const data = JSON.parse(text);
   return data.markets || [];
 }
 
