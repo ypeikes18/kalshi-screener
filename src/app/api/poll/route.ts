@@ -3,7 +3,7 @@ import { getRepository } from '@/lib/db';
 import { fetchEvents, fetchMarketsByEvent, KalshiEvent } from '@/lib/kalshi';
 import { matchMarkets } from '@/lib/matcher';
 
-export const maxDuration = 60;
+export const maxDuration = 120; // Increased timeout for more comprehensive scanning
 
 export async function POST() {
   try {
@@ -15,17 +15,17 @@ export async function POST() {
       return NextResponse.json({ message: 'No active watchlist items', matched: 0 });
     }
 
-  // Fetch events from Kalshi (limited to avoid rate limits)
+  // Fetch more events from Kalshi (user wants more coverage)
   const allEvents: KalshiEvent[] = [];
   let cursor: string | undefined;
-  for (let i = 0; i < 2; i++) { // Reduced from 5 to 2 to avoid rate limits
+  for (let i = 0; i < 10; i++) { // Increased to 10 pages for more coverage
     try {
-      const data = await fetchEvents(cursor, 100); // Reduced from 200 to 100
+      const data = await fetchEvents(cursor, 200); // Back to 200 per page
       allEvents.push(...data.events);
       if (!data.cursor || data.events.length === 0) break;
       cursor = data.cursor;
       // Small delay to avoid rate limits
-      if (i < 1) await new Promise(resolve => setTimeout(resolve, 500));
+      if (i < 9) await new Promise(resolve => setTimeout(resolve, 200));
     } catch (err) {
       console.error('Failed to fetch events:', err);
       break;
